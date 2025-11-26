@@ -279,208 +279,207 @@
     <div id="product-results"></div>
   </div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const generateBtn = document.getElementById('generate-btn');
-      const nicheInput = document.getElementById('niche-input');
-      const questionsInput = document.getElementById('questions-input');
-      const loadingElement = document.querySelector('.loading');
-      const resultsContainer = document.querySelector('.results-container');
-      const productResults = document.getElementById('product-results');
-      const errorMessage = document.querySelector('.error-message');
-      const successMessage = document.querySelector('.success-message');
-      const copyAllBtn = document.getElementById('copy-all-btn');
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // ⚠️ IMPORTANT: REPLACE THIS PLACEHOLDER WITH YOUR DEPLOYED GAS WEB APP URL
+        const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx0CL26bY-2FaoGYycw03-hEYssOPgK8vkEH3nNS7kixnUgW1pulMDVKmvZXRR327LLaw/exec';
 
-      // 🔴 IMPORTANT: REPLACE THIS WITH YOUR DEPLOYED GOOGLE APPS SCRIPT URL
-      const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycby_PiEraRuf2Ku7AdhDr_cdc5r0uRIeNzolUPLxum0tkNrrew8XR-REyfhhBPtYimj6pA/exec'; 
+        const generateBtn = document.getElementById('generate-btn');
+        const nicheInput = document.getElementById('niche-input');
+        const questionsInput = document.getElementById('questions-input');
+        const loadingElement = document.querySelector('.loading');
+        const resultsContainer = document.querySelector('.results-container');
+        const productResults = document.getElementById('product-results');
+        const errorMessage = document.querySelector('.error-message');
+        const successMessage = document.querySelector('.success-message');
+        const copyAllBtn = document.getElementById('copy-all-btn');
 
-      generateBtn.addEventListener('click', generateProductIdeas);
-      copyAllBtn.addEventListener('click', copyAllResults);
+        generateBtn.addEventListener('click', generateProductIdeas);
+        copyAllBtn.addEventListener('click', copyAllResults);
 
-      async function generateProductIdeas() {
-        const niche = nicheInput.value.trim();
-        const questions = questionsInput.value.trim();
+        async function generateProductIdeas() {
+            const niche = nicheInput.value.trim();
+            const questions = questionsInput.value.trim();
 
-        if (!niche || !questions) {
-          showError('Please fill in both fields');
-          return;
-        }
+            if (!niche || !questions) {
+                showError('Please fill in both fields');
+                return;
+            }
 
-        // Clear previous results and errors
-        productResults.innerHTML = '';
-        hideError();
-        hideSuccess();
+            // Clear previous results and errors
+            productResults.innerHTML = '';
+            hideError();
+            hideSuccess();
 
-        // Show loading state
-        generateBtn.disabled = true;
-        loadingElement.style.display = 'block';
-        resultsContainer.style.display = 'none';
+            // Show loading state
+            generateBtn.disabled = true;
+            loadingElement.style.display = 'block';
+            resultsContainer.style.display = 'none';
 
-        try {
-          // 1. Prepare data to send to the Apps Script backend
-          const requestBody = {
-              niche: niche,
-              questions: questions
-          };
+            try {
+                // 1. Prepare data to send to GAS backend
+                const payloadToBackend = {
+                    niche: niche,
+                    questions: questions
+                };
 
-          // 2. Fetch call is now directed to the Apps Script endpoint
-          const response = await fetch(API_ENDPOINT, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody) // Send niche and questions in the body
-          });
+                // 2. Fetch the Google Apps Script Web App URL (the proxy)
+                const response = await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payloadToBackend)
+                });
 
-          if (!response.ok) {
-            throw new Error(`API request failed with status ${response.status}`);
-          }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-          const data = await response.json();
-          
-          // Check for errors returned in the JSON payload (from our Apps Script backend)
-          if (data.error) {
-              throw new Error(data.error);
-          }
-          
-          const content = data.choices[0]?.message?.content;
+                // The GAS backend returns a JSON object: { success: true/false, data: { ... } or error: '...' }
+                const data = await response.json();
 
-          if (!content) {
-            throw new Error('No content received from API');
-          }
+                if (data.success === false) {
+                    throw new Error(data.error || 'Unknown error from the Apps Script backend.');
+                }
 
-          // Process and display results
-          displayResults(content);
-          showSuccess('Product ideas generated successfully!');
-        } catch (error) {
-          console.error('Error:', error);
-          showError('Failed to generate product ideas. Check the console and Apps Script logs.');
-        } finally {
-          loadingElement.style.display = 'none';
-          generateBtn.disabled = false;
-        }
-      }
-      // ... (The rest of the functions like displayResults, copyAllResults, etc., remain the same)
-      
-      
-      function displayResults(content) {
-        // Split content by numbered items
-        const products = content.split(/\d+\./).filter(item => item.trim());
-        
-        products.forEach((product, index) => {
-          if (!product.trim()) return;
-          
-          // Create card container
-          const card = document.createElement('div');
-          card.className = 'product-card';
-          
-          // Parse product details
-          const nameMatch = product.match(/\*\*([^*]+)\*\*/);
-          const typeMatch = product.match(/\*\*Type:\*\*(.+?)(?=\n\*\*|$)/s);
-          const descMatch = product.match(/\*\*Description:\*\*(.+?)(?=\n\*\*|$)/s);
-          const featuresMatch = product.match(/\*\*Features:\*\*(.+?)(?=\n\*\*|$)/s);
-          const monetizationMatch = product.match(/\*\*Monetization:\*\*(.+?)(?=\n\d+\.|$)/s);
-          
-          // Build card content
-          let cardContent = '';
-          
-          // Add product name/number
-          if (nameMatch) {
-            cardContent += `<div class="product-name">${index+1}. <strong>${nameMatch[1].trim()}</strong></div>`;
-          }
-          
-          // Add type
-          if (typeMatch) {
-            cardContent += `<div class="product-type"><strong>Type:</strong> ${typeMatch[1].trim()}</div>`;
-          }
-          
-          // Add description
-          if (descMatch) {
-            cardContent += `<div class="product-description"><strong>Description:</strong> ${descMatch[1].trim()}</div>`;
-          }
-          
-          // Add features
-          if (featuresMatch) {
-            const featuresList = featuresMatch[1]
-              .split('\n- ').filter(item => item.trim())
-              .map(item => `<li>${item.trim()}</li>`).join('');
-              
-            cardContent += `
-              <div class="product-features">
-                <h4>Features:</h4>
-                <ul class="product-features-list">${featuresList}</ul>
-              </div>`;
-          }
-          
-          // Add monetization
-          if (monetizationMatch) {
-            cardContent += `
-              <div class="product-monetization">
-                <h4>Monetization:</h4>
-                <p>${monetizationMatch[1].trim()}</p>
-              </div>`;
-          }
-          
-          card.innerHTML = cardContent;
-          productResults.appendChild(card);
-        });
+                // Extract the content from the AI response payload
+                const content = data.data?.choices?.[0]?.message?.content;
 
-        resultsContainer.style.display = 'block';
-        
-        // Scroll to results
-        setTimeout(() => {
-          resultsContainer.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-      }
+                if (!content) {
+                    throw new Error('No content received from AI via the backend proxy.');
+                }
 
-      function copyAllResults() {
-        const textToCopy = Array.from(document.querySelectorAll('.product-card'))
-          .map(card => card.textContent)
-          .join('\n\n');
-        
-        navigator.clipboard.writeText(textToCopy)
-          .then(() => {
-            copyAllBtn.textContent = 'Copied!';
-            setTimeout(() => {
-              copyAllBtn.textContent = 'Copy All';
-            }, 2000);
-          })
-          .catch(err => {
-            console.error('Failed to copy: ', err);
-          });
-      }
+                // Process and display results
+                displayResults(content);
+                showSuccess('Product ideas generated successfully!');
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Failed to generate product ideas: ${error.message}.`);
+            } finally {
+                loadingElement.style.display = 'none';
+                generateBtn.disabled = false;
+            }
+        }
 
-      function showError(message) {
-        errorMessage.textContent = message;
-        errorMessage.style.display = 'block';
-        setTimeout(() => {
-          errorMessage.style.animation = 'fadeIn 0.3s ease';
-        }, 10);
-      }
+        function displayResults(content) {
+            // Split content by numbered items
+            const products = content.split(/\d+\./).filter(item => item.trim());
 
-      function hideError() {
-        errorMessage.style.display = 'none';
-      }
+            products.forEach((product, index) => {
+                if (!product.trim()) return;
 
-      function showSuccess(message) {
-        successMessage.textContent = message;
-        successMessage.style.display = 'block';
-        setTimeout(() => {
-          successMessage.style.animation = 'fadeIn 0.3s ease';
-        }, 10);
-        
-        setTimeout(() => {
-          successMessage.style.animation = 'fadeOut 0.3s ease';
-          setTimeout(() => {
-            successMessage.style.display = 'none';
-          }, 300);
-        }, 3000);
-      }
+                // Create card container
+                const card = document.createElement('div');
+                card.className = 'product-card';
 
-      function hideSuccess() {
-        successMessage.style.display = 'none';
-      }
-    });
-  </script>
+                // Parse product details
+                const nameMatch = product.match(/\*\*([^*]+)\*\*/);
+                const typeMatch = product.match(/\*\*Type:\*\*(.+?)(?=\n\*\*|$)/s);
+                const descMatch = product.match(/\*\*Description:\*\*(.+?)(?=\n\*\*|$)/s);
+                const featuresMatch = product.match(/\*\*Features:\*\*(.+?)(?=\n\*\*|$)/s);
+                const monetizationMatch = product.match(/\*\*Monetization:\*\*(.+?)(?=\n\d+\.|$)/s);
+
+                // Build card content
+                let cardContent = '';
+
+                // Add product name/number
+                if (nameMatch) {
+                    cardContent += `<div class="product-name">${index+1}. <strong>${nameMatch[1].trim()}</strong></div>`;
+                }
+
+                // Add type
+                if (typeMatch) {
+                    cardContent += `<div class="product-type"><strong>Type:</strong> ${typeMatch[1].trim()}</div>`;
+                }
+
+                // Add description
+                if (descMatch) {
+                    cardContent += `<div class="product-description"><strong>Description:</strong> ${descMatch[1].trim()}</div>`;
+                }
+
+                // Add features
+                if (featuresMatch) {
+                    const featuresList = featuresMatch[1]
+                        .split('\n- ').filter(item => item.trim())
+                        .map(item => `<li>${item.trim()}</li>`).join('');
+
+                    cardContent += `
+                        <div class="product-features">
+                            <h4>Features:</h4>
+                            <ul class="product-features-list">${featuresList}</ul>
+                        </div>`;
+                }
+
+                // Add monetization
+                if (monetizationMatch) {
+                    cardContent += `
+                        <div class="product-monetization">
+                            <h4>Monetization:</h4>
+                            <p>${monetizationMatch[1].trim()}</p>
+                        </div>`;
+                }
+
+                card.innerHTML = cardContent;
+                productResults.appendChild(card);
+            });
+
+            resultsContainer.style.display = 'block';
+
+            // Scroll to results
+            setTimeout(() => {
+                resultsContainer.scrollIntoView({ behavior: 'smooth' });
+            }, 300);
+        }
+
+        function copyAllResults() {
+            const textToCopy = Array.from(document.querySelectorAll('.product-card'))
+                .map(card => card.textContent)
+                .join('\n\n');
+
+            navigator.clipboard.writeText(textToCopy)
+                .then(() => {
+                    copyAllBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyAllBtn.textContent = 'Copy All';
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy: ', err);
+                });
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.animation = 'fadeIn 0.3s ease';
+            }, 10);
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            setTimeout(() => {
+                successMessage.style.animation = 'fadeIn 0.3s ease';
+            }, 10);
+
+            setTimeout(() => {
+                successMessage.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => {
+                    successMessage.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+
+        function hideSuccess() {
+            successMessage.style.display = 'none';
+        }
+    });
+</script>
 </div>
 </div>
