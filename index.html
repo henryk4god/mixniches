@@ -279,7 +279,7 @@
     <div id="product-results"></div>
   </div>
 
-  <script>
+ <script>
     document.addEventListener('DOMContentLoaded', function() {
         // ⚠️ IMPORTANT: REPLACE THIS PLACEHOLDER WITH YOUR DEPLOYED GAS WEB APP URL
         const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbx0CL26bY-2FaoGYycw03-hEYssOPgK8vkEH3nNS7kixnUgW1pulMDVKmvZXRR327LLaw/exec';
@@ -317,19 +317,17 @@
             resultsContainer.style.display = 'none';
 
             try {
-                // 1. Prepare data to send to GAS backend
-                const payloadToBackend = {
-                    niche: niche,
-                    questions: questions
-                };
+                // 🛠️ FIX 1: Use FormData to create a "Simple Request" and bypass the CORS preflight.
+                const formData = new FormData();
+                formData.append('niche', niche);
+                formData.append('questions', questions);
 
                 // 2. Fetch the Google Apps Script Web App URL (the proxy)
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payloadToBackend)
+                    // 🛠️ FIX 2: Do NOT set Content-Type here. The browser will set it correctly (multipart/form-data),
+                    // which allows GAS to read the data via e.parameter.
+                    body: formData 
                 });
 
                 if (!response.ok) {
@@ -361,6 +359,8 @@
                 generateBtn.disabled = false;
             }
         }
+
+        // --- Utility Functions (Keep as they are) ---
 
         function displayResults(content) {
             // Split content by numbered items
